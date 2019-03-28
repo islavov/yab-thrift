@@ -21,11 +21,10 @@
 package thrift
 
 import (
+	"github.com/islavov/yab-thrift/internal/thrifttest"
 	"io/ioutil"
 	"os"
 	"testing"
-
-	"github.com/islavov/yab-thrift/internal/thrifttest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -605,5 +604,50 @@ func TestRequestToBytes(t *testing.T) {
 	for _, tt := range tests {
 		_, err := RequestToBytes(funcSpec, tt.request, tt.opts)
 		assert.Equal(t, tt.wantErr, err != nil, "wantErr %v for %v", tt.wantErr, tt.request)
+	}
+}
+
+func TestRequestToBytesAndBack(t *testing.T) {
+	funcSpec := getFuncSpecs(t, `
+    	struct User {
+      		1: required string name,
+      		2: optional string surname,
+    	}
+
+		service Test {
+			void test(1: User s, 2: string country)
+		}
+	`)["test"]
+
+	tests := []struct {
+		request map[string]interface{}
+		opts    Options
+		wantErr bool
+	}{
+		{
+			request: map[string]interface{}{
+				"s": map[string]interface{}{
+					"name": "testuser",
+					"surname": "testusersurname",
+					},
+				"country": "US",
+			},
+			opts: Options{},
+		},
+		{
+			request: map[string]interface{}{
+				"s": map[string]interface{}{
+					"name": "testuser",
+					},
+				"country": "UK",
+			},
+			opts: Options{UseEnvelopes: false},
+		},
+	}
+
+	for _, tt := range tests {
+		reqBytes, _ := RequestToBytes(funcSpec, tt.request, tt.opts)
+		reqMaps, _ := RequestBytesToMap(funcSpec, reqBytes, tt.opts)
+		assert.EqualValues(t, tt.request, reqMaps, "requestToMap(%v) result mismatch", tt.request)
 	}
 }

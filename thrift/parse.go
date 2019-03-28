@@ -25,6 +25,7 @@ package thrift
 import (
 	"bytes"
 	"fmt"
+	"go.uber.org/thriftrw/envelope"
 	"strings"
 
 	"go.uber.org/thriftrw/compile"
@@ -60,6 +61,62 @@ func SplitMethod(fullMethod string) (svc, method string, err error) {
 	}
 }
 
+// ResponseBytesToMap takes the given response bytes and creates a map that
+// uses field name as keys.
+func RequestBytesToMap(spec *compile.FunctionSpec, requestBytes []byte, opts Options) (map[string]interface{}, error) {
+	w, err := requestBytesToWire(requestBytes, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	var specs map[int16]*compile.FieldSpec
+	if spec.ArgsSpec != nil {
+		specs = getFieldMap(compile.FieldGroup(spec.ArgsSpec))
+	}
+
+	result := make(map[string]interface{})
+	for _, f := range w.Fields {
+		err = nil
+
+		fieldSpec, ok := specs[f.ID]
+		if !ok {
+			return nil, fmt.Errorf("got unknown exception with ID %v: %v", f.ID, f.Value)
+		}
+
+		result[fieldSpec.Name], err = valueFromWire(fieldSpec.Type, f.Value)
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse result field %v: %v", f.ID, err)
+		}
+	}
+
+	return result, nil
+}
+
+func requestBytesToWire(responseBytes []byte, opts Options) (wire.Struct, error) {
+	var w wire.Value
+	var err error
+
+	reader := bytes.NewReader(responseBytes)
+	if opts.UseEnvelopes {
+		w, _, err = envelope.ReadReply(protocol.Binary, bytes.NewReader(responseBytes))
+		if err != nil {
+			return wire.Struct{}, encodedException{err}
+		}
+	} else {
+		w, err = protocol.Binary.Decode(reader, wire.TStruct)
+		if err != nil {
+			return wire.Struct{}, fmt.Errorf("cannot parse Thrift struct from response: %v", err)
+		}
+	}
+
+	if w.Type() != wire.TStruct {
+		panic("Got unexpected type when parsing struct")
+	}
+
+	return w.GetStruct(), nil
+}
+
 // RequestToBytes takes a user request and converts it to the Thrift binary payload.
 // It uses the method spec to convert the user request.
 func RequestToBytes(method *compile.FunctionSpec, request map[string]interface{}, opts Options) ([]byte, error) {
@@ -86,4 +143,3 @@ func RequestToBytes(method *compile.FunctionSpec, request map[string]interface{}
 
 	return buf.Bytes(), nil
 }
-

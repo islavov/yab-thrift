@@ -29,12 +29,9 @@
   version = "v1.3.0"
 
 [[projects]]
-  digest = "1:7d662862543a67c60bcdda0a6edf03b4c04236e8946ec0cde129ec703d196599"
+  digest = "1:b2f94831fa11e99fcda970ddcbd133831b372aca4a9c35b27d52ccac186df430"
   name = "github.com/yarpc/yab"
-  packages = [
-    "internal/thrifttest",
-    "sorted",
-  ]
+  packages = ["sorted"]
   pruneopts = "UT"
   revision = "21e583126b7c1dbeb05304f1f18e3de5a0afc1fd"
   version = "v0.14.2"
@@ -102,7 +99,6 @@
   input-imports = [
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",
-    "github.com/yarpc/yab/internal/thrifttest",
     "github.com/yarpc/yab/sorted",
     "go.uber.org/thriftrw/ast",
     "go.uber.org/thriftrw/compile",
