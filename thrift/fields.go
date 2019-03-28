@@ -24,7 +24,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/yarpc/yab/sorted"
+	"github.com/islavov/yab-thrift/sorted"
 
 	"go.uber.org/thriftrw/compile"
 	"go.uber.org/thriftrw/wire"
