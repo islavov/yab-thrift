@@ -47,6 +47,30 @@ func encodeEnveloped(e wire.Envelope) []byte {
 	return buf.Bytes()
 }
 
+func TestResponseToBytes(t *testing.T) {
+	funcs := getFuncSpecs(t, `
+    exception E {
+      1: required string reason
+    }
+    service Test {
+      void fVoid()
+      string fStr()
+      void fEx() throws (1: E e)
+    }`,
+    )
+
+	fStr := funcs["fStr"]
+	expectedResult := "alabala"
+	result, err := ResponseToBytes(fStr.ResultSpec, expectedResult)
+	assert.NoError(t, err, "An error occurred during parsing")
+	assert.NotNil(t, result)
+
+	parsedBack, err := ResponseBytesToMap(fStr, result, Options{})
+	assert.NoError(t, err, "An error occurred during parsing")
+	assert.Equal(t, expectedResult, parsedBack["result"])
+}
+
+
 func TestResponseBytesToMap(t *testing.T) {
 	funcSpecs := getFuncSpecs(t, `
     exception E {

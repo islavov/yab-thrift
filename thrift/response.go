@@ -37,7 +37,7 @@ type encodedException struct {
 
 // ResponseToBytes takes a response and converts it to the Thrift binary payload.
 // It uses the result spec to convert it.
-func ResponseToBytes(resultSpec *compile.ResultSpec, response map[string]interface{}) ([]byte, error) {
+func ResponseToBytes(resultSpec *compile.ResultSpec, response interface{}) ([]byte, error) {
 	w, err := toWireValue(resultSpec.ReturnType, response)
 
 	if err != nil {
