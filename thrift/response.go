@@ -34,26 +34,49 @@ type encodedException struct {
 	error
 }
 
-
 // ResponseToBytes takes a response and converts it to the Thrift binary payload.
 // It uses the result spec to convert it.
-func ResponseToBytes(resultSpec *compile.ResultSpec, response interface{}) ([]byte, error) {
-	w, err := toWireValue(resultSpec.ReturnType, response)
+func ResponseToBytes(resultSpec *compile.ResultSpec, response map[string]interface{}) ([]byte, error) {
+	value, exists := response["result"]
+	var wireStruct = wire.Struct{}
+	if exists {
+		w, err := toWireValue(resultSpec.ReturnType, value)
 
-	if err != nil {
-		return nil, err
+		if err != nil {
+			return nil, err
+		}
+		wireStruct = wire.Struct{Fields: []wire.Field{{ID: 0, Value: w}}}
+	} else {
+		var excStruct *compile.FieldSpec
+		var excValue interface{}
+		var err error
+		for key := range response {
+			excStruct, err = resultSpec.Exceptions.FindByName(key)
+			if err == nil {
+				excValue = response[key]
+				break
+			}
+		}
+
+		if excStruct != nil {
+			wireField, err := toWireValue(excStruct.Type, excValue)
+			if err != nil {
+				return nil, err
+			}
+			wireStruct = wire.Struct{Fields: []wire.Field{{ID: excStruct.ID, Value: wireField}}}
+		}
+
 	}
 
 	buf := &bytes.Buffer{}
 
-	err = protocol.Binary.Encode(wire.NewValueStruct(wire.Struct{Fields: []wire.Field{{ID: 0, Value: w}}}), buf)
+	err := protocol.Binary.Encode(wire.NewValueStruct(wireStruct), buf)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert Thrift value to bytes: %v", err)
 	}
 
 	return buf.Bytes(), nil
 }
-
 
 // ResponseBytesToMap takes the given response bytes and creates a map that
 // uses field name as keys.

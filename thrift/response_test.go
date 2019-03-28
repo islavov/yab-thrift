@@ -57,19 +57,41 @@ func TestResponseToBytes(t *testing.T) {
       string fStr()
       void fEx() throws (1: E e)
     }`,
-    )
+	)
 
-	fStr := funcs["fStr"]
-	expectedResult := "alabala"
-	result, err := ResponseToBytes(fStr.ResultSpec, expectedResult)
-	assert.NoError(t, err, "An error occurred during parsing")
-	assert.NotNil(t, result)
+	tests := []struct{
+		Msg string
+		Spec *compile.FunctionSpec
+		Result map[string]interface{}
+		Err error
+	} {
+		{
+			Msg: "void test",
+			Spec: funcs["fVoid"],
+			Result: map[string]interface{}{},
+		},
+		{
+			Msg: "string test",
+			Spec: funcs["fStr"],
+			Result: map[string]interface{}{"result": "alabala"},
+		},
+		{
+			Msg: "error test",
+			Spec: funcs["fEx"],
+			Result: map[string]interface{}{"e": map[string]interface{}{"reason": "bar"}},
+		},
+	}
 
-	parsedBack, err := ResponseBytesToMap(fStr, result, Options{})
-	assert.NoError(t, err, "An error occurred during parsing")
-	assert.Equal(t, expectedResult, parsedBack["result"])
+	for _, testCase := range tests {
+		result, err := ResponseToBytes(testCase.Spec.ResultSpec, testCase.Result)
+		assert.NoError(t, err, fmt.Errorf("%s: An error occurred during parsing", testCase.Msg))
+		assert.NotNil(t, result)
+
+		parsedBack, err := ResponseBytesToMap(testCase.Spec, result, Options{})
+		assert.NoError(t, err, "An error occurred during parsing back")
+		assert.EqualValues(t, testCase.Result, parsedBack)
+	}
 }
-
 
 func TestResponseBytesToMap(t *testing.T) {
 	funcSpecs := getFuncSpecs(t, `
